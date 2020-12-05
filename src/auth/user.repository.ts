@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { EntityRepository, Repository } from 'typeorm';
+import { genSalt, hash } from 'bcrypt';
 import { AuthCredentialsDTO } from './dto/auth-credentials.dto';
 import { User } from './user.entity';
 
@@ -11,9 +12,13 @@ export class UserRepository extends Repository<User> {
   async signUp(authCredentialsDTO: AuthCredentialsDTO): Promise<void> {
     const { password, username } = authCredentialsDTO;
 
+    const salt = await genSalt();
+    const hashedPassword = await this.hashPassword(password, salt);
+
     const user = this.create({
-      password,
+      password: hashedPassword,
       username,
+      salt,
     });
 
     try {
@@ -25,5 +30,9 @@ export class UserRepository extends Repository<User> {
         throw new InternalServerErrorException();
       }
     }
+  }
+
+  private async hashPassword(password: string, salt: string) {
+    return hash(password, salt);
   }
 }
